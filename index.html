@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Influencer Tracker Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; color: #1d1d1f; }
+
+  header { background: #fff; border-bottom: 1px solid #e5e5ea; padding: 20px 32px; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header span { font-size: 13px; color: #6e6e73; background: #f5f5f7; padding: 4px 12px; border-radius: 20px; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 28px 32px; }
+
+  /* Week tabs */
+  .week-selector { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .week-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid #e5e5ea; background: #fff; font-size: 13px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .week-btn.active { background: #1d1d1f; color: #fff; border-color: #1d1d1f; }
+
+  /* KPIs */
+  .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+  .kpi { background: #fff; border-radius: 14px; padding: 20px 22px; border: 1px solid #e5e5ea; }
+  .kpi .label { font-size: 12px; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .kpi .value { font-size: 32px; font-weight: 700; }
+  .kpi .sub { font-size: 12px; color: #6e6e73; margin-top: 4px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+  .card { background: #fff; border-radius: 14px; padding: 22px; border: 1px solid #e5e5ea; }
+  .card h2 { font-size: 14px; font-weight: 600; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+  .card .subtitle { font-size: 12px; color: #aeaeb2; margin-bottom: 18px; }
+
+  canvas { max-height: 260px; }
+
+  /* Budget tracker */
+  .budget-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+  .budget-platform { font-size: 15px; font-weight: 700; }
+  .budget-nums { font-size: 13px; color: #6e6e73; }
+  .budget-nums strong { color: #1d1d1f; }
+  .progress-track { background: #f2f2f7; border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 6px; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+  .budget-meta { display: flex; justify-content: space-between; font-size: 11px; color: #aeaeb2; }
+  .over { color: #ef4444; font-weight: 600; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; color: #6e6e73; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #e5e5ea; }
+  th.right, td.right { text-align: right; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f2f2f7; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f9f9fb; }
+
+  .rank { font-size: 12px; font-weight: 700; color: #aeaeb2; }
+  .rank-1 { color: #f59e0b; }
+  .rank-2 { color: #9ca3af; }
+  .rank-3 { color: #b45309; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge-green  { background: #d1fae5; color: #065f46; }
+  .badge-yellow { background: #fef3c7; color: #92400e; }
+  .badge-red    { background: #fee2e2; color: #991b1b; }
+
+  .plat-tag { display: inline-block; padding: 2px 7px; border-radius: 8px; font-size: 10px; font-weight: 600; }
+  .plat-li  { background: #dbeafe; color: #1e40af; }
+  .plat-ig  { background: #fce7f3; color: #9d174d; }
+  .plat-yt  { background: #fee2e2; color: #991b1b; }
+
+  /* Platform filter tabs */
+  .ptabs { display: flex; gap: 8px; margin-bottom: 18px; }
+  .ptab { padding: 5px 14px; border-radius: 20px; border: 1px solid #e5e5ea; font-size: 12px; cursor: pointer; background: #fff; transition: all 0.15s; }
+  .ptab.active { background: #1d1d1f; color: #fff; border-color: #1d1d1f; }
+
+  /* Insights */
+  .insight-list { list-style: none; }
+  .insight-list li { padding: 10px 0; border-bottom: 1px solid #f2f2f7; font-size: 13px; line-height: 1.6; }
+  .insight-list li:last-child { border-bottom: none; }
+  .insight-list li::before { content: "→ "; color: #6e6e73; }
+
+  /* ── Hook Analysis Styles ─────────────────────────────── */
+  .section-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 32px 0 20px;
+  }
+  .section-divider h2 {
+    font-size: 16px; font-weight: 700; color: #1d1d1f; white-space: nowrap;
+  }
+  .section-divider::after {
+    content: ''; flex: 1; height: 1px; background: #e5e5ea;
+  }
+
+  .hook-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+  }
+
+  .angle-pill {
+    display: inline-block; padding: 2px 8px; border-radius: 8px;
+    font-size: 11px; background: #f2f2f7; color: #3a3a3c; font-weight: 500;
+  }
+
+  .pattern-list { list-style: none; }
+  .pattern-list li {
+    padding: 12px 0; border-bottom: 1px solid #f2f2f7; font-size: 13px; line-height: 1.55;
+  }
+  .pattern-list li:last-child { border-bottom: none; }
+  .pattern-label {
+    display: block; font-weight: 700; margin-bottom: 3px; font-size: 13px;
+  }
+  .pattern-sub { font-size: 12px; color: #6e6e73; }
+
+  .top-post-card {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 14px 0; border-bottom: 1px solid #f2f2f7;
+  }
+  .top-post-card:last-child { border-bottom: none; }
+  .top-post-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .top-post-creator { font-weight: 700; font-size: 13px; }
+  .top-post-stat { font-size: 13px; font-weight: 700; margin-left: auto; color: #1d1d1f; }
+  .top-post-hook-text { font-size: 12px; color: #3a3a3c; font-style: italic; line-height: 1.5; }
+  .top-post-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+
+  .avoid-item {
+    padding: 10px 0; border-bottom: 1px solid #f2f2f7;
+  }
+  .avoid-item:last-child { border-bottom: none; }
+  .avoid-label { font-size: 13px; font-weight: 700; color: #991b1b; margin-bottom: 3px; }
+  .avoid-desc { font-size: 12px; color: #6e6e73; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📊 Influencer Tracker</h1>
+  <span>May 2026</span>
+</header>
+
+<div class="container">
+
+  <!-- Week tabs -->
+  <div class="week-selector" id="weekSelector"></div>
+
+  <!-- KPIs -->
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <!-- Budget tracker — always monthly -->
+  <div class="grid-3" id="budgetRow"></div>
+
+  <!-- Charts -->
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <h2>Reactions by Creator</h2>
+      <p class="subtitle" id="chartSubtitle"></p>
+      <canvas id="reactionsChart"></canvas>
+    </div>
+    <div class="card">
+      <h2>Engagement Share — Top 6</h2>
+      <p class="subtitle">By total engagement (reactions + comments + shares)</p>
+      <canvas id="engagementChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Posts table -->
+  <div class="card" style="margin-bottom:20px">
+    <h2 id="tableTitle">All Posts — May 2026</h2>
+    <p class="subtitle">Sorted by total engagement · CPM shown where views are reported</p>
+    <div class="ptabs" id="platformTabs">
+      <span class="ptab active" onclick="filterPlatform('all',this)">All</span>
+      <span class="ptab" onclick="filterPlatform('LinkedIn',this)">LinkedIn</span>
+      <span class="ptab" onclick="filterPlatform('Instagram',this)">Instagram</span>
+      <span class="ptab" onclick="filterPlatform('YouTube',this)">YouTube</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Creator</th>
+            <th>Platform</th>
+            <th>Date</th>
+            <th class="right">Reactions</th>
+            <th class="right">Comments</th>
+            <th class="right">Shares</th>
+            <th class="right">Views</th>
+            <th class="right">Total Eng.</th>
+            <th class="right">CPM</th>
+            <th>Performance</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Hook & Content Performance Analysis ───────────── -->
+  <div class="section-divider"><h2>🎣 Hook &amp; Content Performance Analysis</h2></div>
+
+  <!-- Hook charts row -->
+  <div class="card" style="margin-bottom:20px">
+    <h2>Avg Engagement by Hook Type</h2>
+    <p class="subtitle">Posts with reported metrics · all platforms</p>
+    <canvas id="hookTypeChart" style="max-height:200px"></canvas>
+  </div>
+
+  <!-- What worked / what to avoid -->
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <h2>🏆 Hooks That Worked</h2>
+      <p class="subtitle">Ranked by avg total engagement · all platforms</p>
+      <div id="topPatterns"></div>
+    </div>
+    <div class="card">
+      <h2>⛔ Hooks to Avoid</h2>
+      <p class="subtitle">Patterns with consistently low engagement</p>
+      <div id="avoidPatterns"></div>
+    </div>
+  </div>
+
+  <!-- Top performing posts detail -->
+  <div class="card" style="margin-bottom:20px">
+    <h2 id="topPostsTitle">🥇 Best Performing Posts — All May</h2>
+    <p class="subtitle">Top 5 by total engagement · hook text · topic · angle · platform</p>
+    <div id="topPostsList"></div>
+  </div>
+
+  <!-- Insights -->
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <h2>✅ What Worked — Keep Doing</h2>
+      <ul class="insight-list" id="insightsGood"></ul>
+    </div>
+    <div class="card">
+      <h2>⚠️ What to Avoid</h2>
+      <ul class="insight-list" id="insightsBad"></ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── HOOK CONFIG ──────────────────────────────────────────────────────────────
+const hookConfig = {
+  'Bold Claim':   { color: '#ef4444', bg: '#fee2e2', textColor: '#991b1b', icon: '🔥' },
+  'Demo/Review':  { color: '#f97316', bg: '#ffedd5', textColor: '#9a3412', icon: '🎬' },
+  'Story':        { color: '#8b5cf6', bg: '#ede9fe', textColor: '#5b21b6', icon: '📖' },
+  'Testimonial':  { color: '#10b981', bg: '#d1fae5', textColor: '#065f46', icon: '⭐' },
+  'Question':     { color: '#06b6d4', bg: '#cffafe', textColor: '#155e75', icon: '❓' },
+  'Announcement': { color: '#f59e0b', bg: '#fef3c7', textColor: '#92400e', icon: '📣' },
+  'How-To':       { color: '#3b82f6', bg: '#dbeafe', textColor: '#1e40af', icon: '📚' },
+};
+
+// ─── ALL POSTS ────────────────────────────────────────────────────────────────
+// hook: opening-line strategy (Bold Claim / Demo/Review / Story / Testimonial / Question / Announcement / How-To / null=unknown)
+// hookText: snippet of opening line where recoverable from URL slug or notes
+// angle: overall framing / content strategy
+// topic: subject matter
+const allPosts = [
+  // ── Week 1: May 1–7 ──────────────────────────────────────────────────────
+  { week:1, date:"May 1",  creator:"Micaela Dixon",         platform:"LinkedIn",  reactions:28,  comments:10,  shares:0,   views:null,  rate:275,
+    hook:"Story",        hookText:'"ok so I made a video game on a Tuesday after work — while I was commuting. because why not."', angle:"Casual Story / Creative Demo", topic:"UX Pilot — gamified learning" },
+
+  { week:1, date:"May 5",  creator:"Abraham John",           platform:"LinkedIn",  reactions:719, comments:126, shares:59,  views:null,  rate:400,
+    hook:"Bold Claim",   hookText:'"🚨Big News for Designers: What if your AI design tool could actually design with your real components"', angle:"Announcement + Bold Question", topic:"AI design system integration" },
+
+  { week:1, date:"May 5",  creator:"@reverelia",             platform:"Instagram", reactions:12000,comments:54,shares:null,views:12000, rate:1500,
+    hook:null,           hookText:null,                                     angle:"Unknown",                  topic:"Unknown" },
+
+  { week:1, date:"May 6",  creator:"Nika Kralj",             platform:"LinkedIn",  reactions:24,  comments:4,   shares:1,   views:null,  rate:100,
+    hook:"Announcement", hookText:'"My friends over at UX Pilot AI just dropped a new AI agent 👀 I\'ve been playing around with it and… something that felt impossible is now very real."', angle:"Feature Announcement + Personal Reaction", topic:"Nodey — scrape & reuse design system components" },
+
+  { week:1, date:"May 7",  creator:"Aneta Kmiecik",          platform:"Instagram", reactions:179, comments:62,  shares:4,   views:5849,  rate:1625,
+    hook:"Demo/Review",  hookText:"#AD visual product demo (Instagram carousel/video)",  angle:"Partner Demo — Instagram native", topic:"AI design tools — Figma workflow" },
+
+  { week:1, date:"May 7",  creator:"Aneta Kmiecik",          platform:"LinkedIn",  reactions:74,  comments:25,  shares:5,   views:14873, rate:1625,
+    hook:"Question",     hookText:'"What\'s an AI design process when you still design in Figma? I\'m still figuring it out honestly."', angle:"Relatable Uncertainty + Partner Mention", topic:"AI design workflow with Figma" },
+
+  { week:1, date:"May 7",  creator:"Andy Tries Coding (2)",  platform:"YouTube",   reactions:794, comments:62, shares:null, views:24000, rate:1500,
+    hook:"Demo/Review",  hookText:"Hands-on YouTube coding demo of UX Pilot",  angle:"Video Demo",           topic:"UX Pilot coding demo" },
+
+  // ── Week 2: May 8–14 ─────────────────────────────────────────────────────
+  { week:2, date:"May 8",  creator:"Prithiv Kumar",          platform:"LinkedIn",  reactions:4,   comments:0,   shares:0,   views:null,  rate:500,
+    hook:"Story",        hookText:'"I tested UX Pilot AI inside a real Figma design system. It didn\'t just generate UI, it respected components, structure, and constraints. That\'s a big shift."', angle:"Personal Experiment / Soft Review", topic:"UX Pilot AI inside Figma design system" },
+
+  { week:2, date:"May 8",  creator:"@CharlesPostiaux",       platform:"YouTube",   reactions:237, comments:28,  shares:null,views:4800,  rate:586.47,
+    hook:"Demo/Review",  hookText:"Hands-on YouTube video review of UX Pilot AI tool", angle:"Video Demo / Honest Review", topic:"UX Pilot tool demo — YouTube" },
+
+  { week:2, date:"May 12", creator:"Oliver Graff",           platform:"LinkedIn",  reactions:17,  comments:2,   shares:1,   views:null,  rate:630,
+    hook:"Story",        hookText:'"In the past week, I\'ve been playing around and testing with UX Pilot AI\'s Nodey, a new AI design agent inside Figma, using a real design system."', angle:"Personal Discovery / Exploration", topic:"Nodey AI agent inside Figma" },
+
+  // ── Week 3: May 15–21 ────────────────────────────────────────────────────
+  { week:3, date:"May 19", creator:"Oliver Graff (2)",       platform:"LinkedIn",  reactions:13,  comments:1,   shares:0,   views:null,  rate:null,
+    hook:"Story",        hookText:'"I spent some more time with Nodey, a new AI design agent inside Figma, from UX Pilot AI."', angle:"Follow-up Discovery / Deep Dive", topic:"Nodey deep dive — design system grounding" },
+
+  { week:3, date:"May 19", creator:"Prithiv Kumar (2)",      platform:"LinkedIn",  reactions:0,   comments:0,   shares:0,   views:null,  rate:null,
+    hook:"Bold Claim",   hookText:'"Most AI design tools generate UI. What made UX Pilot AI interesting was something else: It worked inside a real design system."', angle:"Contrarian Take / Differentiation", topic:"UX Pilot vs. generic AI design tools" },
+
+  { week:3, date:"May 21", creator:"@creative_vaani",        platform:"Instagram", reactions:313, comments:178, shares:null, views:13600, rate:1200,
+    hook:null,           hookText:null,                                     angle:"Unknown",                  topic:"Unknown" },
+
+  { week:3, date:"May 21", creator:"John Balboa",            platform:"LinkedIn",  reactions:40,  comments:18,  shares:0,   views:null,  rate:750,
+    hook:"Bold Claim",   hookText:'"𝗨𝗫 𝗣𝗶𝗹𝗼𝘁 𝗸𝗶𝗹𝗹𝗲𝗱 𝘁𝘄𝗼 𝘁𝗼𝗼𝗹𝘀 𝘄𝗶𝘁𝗵𝗼𝘂𝘁 𝗮𝘀𝗸𝗶𝗻𝗴. Figma. Claude Design."', angle:"Provocative Claim / Competitive Framing", topic:"UX Pilot vs. Figma + Claude Design" },
+
+  { week:3, date:"May 21", creator:"Andy Tries Coding",      platform:"YouTube",   reactions:40,  comments:9,   shares:null, views:1200,  rate:2200,
+    hook:"Demo/Review",  hookText:"Hands-on YouTube coding tutorial for UX Pilot", angle:"Video Demo",        topic:"UX Pilot coding tutorial" },
+
+  // ── Week 4: May 22–28 ────────────────────────────────────────────────────
+  { week:4, date:"May 22", creator:"Denis Panjuta",          platform:"LinkedIn",  reactions:220, comments:62,  shares:8,   views:1731,  rate:500,
+    hook:"Bold Claim",   hookText:'"New shiny AI is out, Anthropic Claude Design is everywhere, and it just gave me even more reason to stick to UX Pilot AI."', angle:"Contrarian / Competitor Reaction", topic:"UX Pilot AI vs. Claude Design — why I'm staying" },
+
+  { week:4, date:"May 22", creator:"Hazal Ozturk",           platform:"LinkedIn",  reactions:9,   comments:3,   shares:0,   views:null,  rate:200,
+    hook:"Story",        hookText:'"UX Pilot AI reached out and challenged me to test their Figma AI agent against Claude. Here\'s the honest breakdown."', angle:"Challenge / Comparison Story", topic:"UX Pilot vs. Claude — same prompt, same design system" },
+
+  { week:4, date:"May 25", creator:"ux.whee",                platform:"Instagram", reactions:null,comments:null,shares:null,views:null,  rate:1700,
+    hook:null,           hookText:null,                                     angle:"Unknown",                  topic:"Waiting for metrics" },
+
+  { week:4, date:"May 25", creator:"ux.whee",                platform:"LinkedIn",  reactions:null,comments:null,shares:null,views:null,  rate:300,
+    hook:null,           hookText:null,                                     angle:"Cross-post from Instagram", topic:"Waiting for metrics" },
+
+  { week:4, date:"May 25", creator:"Jhanvi Bhatia",          platform:"LinkedIn",  reactions:14,  comments:0,   shares:0,   views:null,  rate:300,
+    hook:"Testimonial",  hookText:'"[#AD] Nodey helps me take my \'random shower thought\' to an actual handoff without leaving Figma."', angle:"Branded Testimonial / Use-case Story", topic:"Nodey — idea to handoff workflow" },
+
+  { week:4, date:"May 25", creator:"Kingsley Orji",           platform:"LinkedIn",  reactions:236, comments:28,  shares:25,  views:null,  rate:750,
+    hook:"Bold Claim",   hookText:'"One thing I know will burn your AI credits faster than anything else is jumping straight into building with AI without first planning out the project."', angle:"Pain Point / Warning Hook", topic:"AI planning before building — productivity" },
+
+  { week:4, date:"May 25", creator:"Tanya Agarwal",          platform:"LinkedIn",  reactions:31,  comments:14,  shares:0,   views:null,  rate:300,
+    hook:"Story",        hookText:'"I typed the same 12 words into two AI tools. \'Generate a pricing card. Plan name, price, 4 features, CTA.\' One gave me a component. One gave me a product."', angle:"Personal Experiment / Side-by-side Comparison", topic:"UX Pilot vs. ChatGPT — same prompt, different output" },
+
+  { week:4, date:"May 25", creator:"Benjamin Onyebuchi",     platform:"LinkedIn",  reactions:52,  comments:8,   shares:3,   views:null,  rate:200,
+    hook:"Story",        hookText:'"I slept on UX Pilot AI for nearly a year. Big mistake."', angle:"Confession / Honest Review", topic:"UX Pilot AI — late adopter honest review" },
+
+  { week:4, date:"May 27", creator:"Amarachi",               platform:"LinkedIn",  reactions:null,comments:null,shares:null,views:null,  rate:200,
+    hook:null,           hookText:null,                                     angle:"Unknown",                  topic:"Waiting for metrics" },
+
+  { week:4, date:"May 28", creator:"Jaclin",                 platform:"LinkedIn",  reactions:null,comments:null,shares:null,views:null,  rate:200,
+    hook:null,           hookText:null,                                     angle:"Unknown",                  topic:"Waiting for metrics" },
+];
+
+// ─── WEEK DEFINITIONS ─────────────────────────────────────────────────────────
+const weekDefs = [
+  { label: "All — May",         key: 0 },
+  { label: "Week 1 · May 1–7",  key: 1 },
+  { label: "Week 2 · May 8–14", key: 2 },
+  { label: "Week 3 · May 15–21",key: 3 },
+  { label: "Week 4 · May 22–28",key: 4 },
+];
+
+// ─── BUDGET CONFIG ────────────────────────────────────────────────────────────
+const budgetPrevision = { LinkedIn: 30000, Instagram: 5000, YouTube: 45000 };
+const platformColors  = { LinkedIn: '#3b82f6', Instagram: '#ec4899', YouTube: '#ef4444' };
+
+// ─── INSIGHTS ─────────────────────────────────────────────────────────────────
+const insights = {
+  good: [
+    "Bold story hooks & claims drove the highest shares — Abraham John (719 reactions) in Week 1",
+    "Tool demo / before-after format consistently earned comments across platforms",
+    "Creators with large existing audiences amplified reach significantly",
+    "Posts naming specific products (Nodey, UX Pilot) saw strong comment engagement",
+    "UX Pilot AI + Figma integration content resonated well across multiple creators",
+  ],
+  bad: [
+    "Two posts from the same creator in one week diluted both (Prithiv Kumar — 4 vs 0 reactions)",
+    "Posts with soft educational tone and no hook underperformed (Jhanvi Bhatia: 14 reactions)",
+    "Posts without a clear CTA or link showed near-zero share rates",
+    "Instagram creators @reverelia, @creative_vaani, ux.wheee still pending metrics — follow up",
+  ]
+};
+
+// ─── WHAT WORKED / WHAT TO AVOID — computed dynamically in renderHookAnalysis ──
+// (static reference data removed — all patterns derived from filtered post data)
+const _unused = {
+  worked: [
+    {
+      label: "Bold Claim — Contrarian or Competitive",
+      icon: "🔥",
+      color: "#ef4444",
+      description: "Highest-performing hook by far (avg 308 eng) — works best when reacting to an industry moment like a competitor launch. Examples: \"New shiny AI is out… and it just gave me more reason to stick to UX Pilot\" (Denis Panjuta, 290 eng), \"UX Pilot killed two tools without asking\" (John Balboa, 58 eng).",
+      tags: ["Bold Claim", "LinkedIn", "Contrarian", "Competitive"]
+    },
+    {
+      label: "Demo/Review — Visual or Video",
+      icon: "🎬",
+      color: "#f97316",
+      description: "Now the top hook by avg engagement (avg ~354 eng). Andy Tries Coding post #2 alone hit 856 eng (24k views, 794 reactions) on YouTube, and @CharlesPostiaux (265 eng) and Aneta Kmiecik's Instagram demo (245 eng) also ranked high. Video demos of the product working in real conditions consistently outperform written posts.",
+      tags: ["Demo/Review", "YouTube", "Instagram", "Visual"]
+    },
+    {
+      label: "Question that admits uncertainty",
+      icon: "❓",
+      color: "#06b6d4",
+      description: "\"What's an AI design process when you still design in Figma? I'm still figuring it out honestly.\" (Aneta Kmiecik, 104 eng). Admitting you don't have the answer feels authentic and invites the audience to weigh in — even inside a paid #AD post.",
+      tags: ["Question", "LinkedIn", "Authentic"]
+    },
+    {
+      label: "Story — Confession or Regret",
+      icon: "📖",
+      color: "#8b5cf6",
+      description: "\"I slept on UX Pilot AI for nearly a year. Big mistake.\" (Benjamin Onyebuchi, 63 eng) and \"I typed the same 12 words into two AI tools\" (Tanya Agarwal, 45 eng) worked because the opening creates instant tension. Story hooks only perform when there's a stakes-raising first line.",
+      tags: ["Story", "LinkedIn", "Confession", "Tension"]
+    },
+  ],
+  avoid: [
+    {
+      label: "Story with no tension",
+      desc: "\"In the past week I've been playing around with Nodey…\" (Oliver Graff, 20 eng) and \"I spent some more time with Nodey…\" (Oliver Graff follow-up, 14 eng) are well-written but open with zero stakes. A story hook needs a problem, mistake, or surprise to give readers a reason to keep going."
+    },
+    {
+      label: "Repeat posts from the same creator in one week",
+      desc: "Prithiv Kumar's two posts in the same week got 4 and 0 reactions. Even with a decent hook on the second post, the audience had already seen sponsored content from this creator days earlier — max one post per creator per week."
+    },
+    {
+      label: "Branded #AD post with no hook",
+      desc: "Jhanvi Bhatia's post led with the product benefit directly (\"Nodey helps me take my 'random shower thought' to a handoff…\") and got 14 total eng. Leading with a bold claim, question, or conflict before the product mention would have made it scroll-stopping instead of skippable."
+    },
+    {
+      label: "Instagram/YouTube posts with no metrics",
+      desc: "@reverelia, @creative_vaani, ux.wheee, and Andy Tries Coding (×2) have no reported data. These platforms need creator dashboard screenshots, UTM links, or promo codes — without them, ROI is impossible to measure."
+    },
+  ]
+}; // _unused — kept for reference only
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let currentWeekKey   = 0;
+let currentPlatform  = 'all';
+let charts = {};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function totalEng(p) { return (p.reactions||0) + (p.comments||0) + (p.shares||0); }
+function cpm(p)      { return (p.views && p.rate) ? '$'+(p.rate/p.views*1000).toFixed(2) : null; }
+function shortNum(n) { return (n===null||n===undefined) ? '—' : n>=1000 ? (n/1000).toFixed(1)+'k' : n; }
+function dash()      { return '<span style="color:#c7c7cc">—</span>'; }
+function platTag(pl) {
+  const cls = pl==='LinkedIn'?'plat-li':pl==='Instagram'?'plat-ig':'plat-yt';
+  return `<span class="plat-tag ${cls}">${pl}</span>`;
+}
+function hookPill(h) {
+  if (!h) return '<span style="color:#c7c7cc;font-size:11px">—</span>';
+  const cfg = hookConfig[h] || { bg:'#f2f2f7', textColor:'#3a3a3c', icon:'•' };
+  return `<span class="hook-pill" style="background:${cfg.bg};color:${cfg.textColor}">${cfg.icon} ${h}</span>`;
+}
+function perfBadge(p) {
+  if (p.reactions === null) return dash();
+  const e = totalEng(p);
+  if (e >= 100) return '<span class="badge badge-green">Strong</span>';
+  if (e >= 20)  return '<span class="badge badge-yellow">Mid</span>';
+  return '<span class="badge badge-red">Low</span>';
+}
+function getFiltered() {
+  const byWeek = currentWeekKey === 0 ? allPosts : allPosts.filter(p => p.week === currentWeekKey);
+  return currentPlatform === 'all' ? byWeek : byWeek.filter(p => p.platform === currentPlatform);
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function renderWeekTabs() {
+  document.getElementById('weekSelector').innerHTML = weekDefs.map(w =>
+    `<button class="week-btn ${w.key===currentWeekKey?'active':''}" onclick="selectWeek(${w.key},this)">${w.label}</button>`
+  ).join('');
+}
+
+function selectWeek(key, btn) {
+  currentWeekKey = key;
+  document.querySelectorAll('.week-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+function filterPlatform(platform, btn) {
+  currentPlatform = platform;
+  document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+  renderCharts();
+}
+
+function renderKPIs() {
+  const data = getFiltered();
+  const withMetrics = data.filter(p => p.reactions !== null);
+  const totalR   = withMetrics.reduce((s,p) => s+(p.reactions||0), 0);
+  const totalC   = withMetrics.reduce((s,p) => s+(p.comments||0), 0);
+  const totalBud = data.reduce((s,p) => s+(p.rate||0), 0);
+  const weekLabel = weekDefs.find(w=>w.key===currentWeekKey).label;
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi"><div class="label">Creators</div><div class="value">${data.length}</div><div class="sub">${weekLabel}</div></div>
+    <div class="kpi"><div class="label">Total Reactions</div><div class="value">${shortNum(totalR)}</div><div class="sub">reported posts only</div></div>
+    <div class="kpi"><div class="label">Total Comments</div><div class="value">${shortNum(totalC)}</div><div class="sub">reported posts only</div></div>
+  `;
+}
+
+function renderBudget() {
+  const platforms = ['LinkedIn', 'Instagram', 'YouTube'];
+  document.getElementById('budgetRow').innerHTML = platforms.map(pl => {
+    const spent = allPosts.filter(p=>p.platform===pl).reduce((s,p)=>s+(p.rate||0),0);
+    const prev  = budgetPrevision[pl];
+    const pct   = Math.min((spent/prev)*100, 100);
+    const over  = spent > prev;
+    const color = platformColors[pl];
+    return `
+      <div class="card">
+        <div class="budget-header">
+          <span class="budget-platform">${pl}</span>
+          <span class="budget-nums"><strong>$${spent.toLocaleString()}</strong> / $${prev.toLocaleString()}</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${pct}%; background:${over?'#ef4444':color}"></div>
+        </div>
+        <div class="budget-meta">
+          <span>${Math.round(pct)}% of budget · full month</span>
+          <span class="${over?'over':''}">
+            ${over ? `$${(spent-prev).toLocaleString()} over` : `$${(prev-spent).toLocaleString()} remaining`}
+          </span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderTable() {
+  const data = getFiltered();
+  const sorted = [...data].sort((a,b) => totalEng(b) - totalEng(a));
+  const weekLabel = weekDefs.find(w=>w.key===currentWeekKey).label;
+  document.getElementById('tableTitle').textContent = `Posts — ${weekLabel}`;
+  let rank = 0;
+  document.getElementById('tableBody').innerHTML = sorted.map(p => {
+    const hasMetrics = p.reactions !== null;
+    if (hasMetrics) rank++;
+    const rankClass = rank <= 3 && hasMetrics ? `rank rank-${rank}` : 'rank';
+    const c = cpm(p);
+    return `
+    <tr>
+      <td><span class="${rankClass}">${hasMetrics ? rank : '—'}</span></td>
+      <td><strong>${p.creator}</strong></td>
+      <td>${platTag(p.platform)}</td>
+      <td style="color:#6e6e73">${p.date}</td>
+      <td class="right">${p.reactions!==null ? p.reactions.toLocaleString() : dash()}</td>
+      <td class="right">${p.comments!==null  ? p.comments.toLocaleString()  : dash()}</td>
+      <td class="right">${p.shares!==null    ? p.shares.toLocaleString()    : dash()}</td>
+      <td class="right">${p.views!==null     ? p.views.toLocaleString()     : dash()}</td>
+      <td class="right">${hasMetrics ? totalEng(p).toLocaleString() : dash()}</td>
+      <td class="right">${c || dash()}</td>
+      <td>${perfBadge(p)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderInsights() {
+  document.getElementById('insightsGood').innerHTML = insights.good.map(i=>`<li>${i}</li>`).join('');
+  document.getElementById('insightsBad').innerHTML  = insights.bad.map(i=>`<li>${i}</li>`).join('');
+}
+
+function destroyCharts() { Object.values(charts).forEach(c=>c.destroy()); charts={}; }
+
+function renderCharts() {
+  // Destroy only main charts, not hook charts
+  ['reactions','engagement'].forEach(k => { if(charts[k]) { charts[k].destroy(); delete charts[k]; } });
+
+  const data = getFiltered();
+  const withMetrics = data.filter(p=>p.reactions!==null);
+  const sorted = [...withMetrics].sort((a,b)=>b.reactions-a.reactions);
+  const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#ec4899','#84cc16','#6366f1','#14b8a6','#fb923c'];
+  const barColors = sorted.map(p=>p.platform==='LinkedIn'?'#3b82f6':p.platform==='Instagram'?'#ec4899':'#ef4444');
+
+  const weekLabel = weekDefs.find(w=>w.key===currentWeekKey).label;
+  document.getElementById('chartSubtitle').textContent = `${weekLabel} · reported posts only`;
+
+  if (sorted.length === 0) {
+    document.getElementById('reactionsChart').parentElement.querySelector('.subtitle').textContent = 'No reported data for this selection';
+    return;
+  }
+
+  charts.reactions = new Chart(document.getElementById('reactionsChart'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(p=>p.creator.replace(' (2)','*')),
+      datasets: [{ label:'Reactions', data:sorted.map(p=>p.reactions), backgroundColor:barColors, borderRadius:6 }]
+    },
+    options: { plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}, maintainAspectRatio:true }
+  });
+
+  const top6 = [...withMetrics].sort((a,b)=>totalEng(b)-totalEng(a)).slice(0,6);
+  charts.engagement = new Chart(document.getElementById('engagementChart'), {
+    type: 'doughnut',
+    data: {
+      labels: top6.map(p=>p.creator.split(' ')[0]),
+      datasets: [{ data:top6.map(p=>totalEng(p)), backgroundColor:COLORS.slice(0,6), borderWidth:2, borderColor:'#fff' }]
+    },
+    options: { plugins:{legend:{position:'right',labels:{font:{size:11}}}}, maintainAspectRatio:true }
+  });
+}
+
+// ─── HOOK ANALYSIS ────────────────────────────────────────────────────────────
+function renderHookAnalysis() {
+  ['hookType'].forEach(k => { if(charts[k]) { charts[k].destroy(); delete charts[k]; } });
+
+  const pool       = currentWeekKey === 0 ? allPosts : allPosts.filter(p => p.week === currentWeekKey);
+  const weekLabel  = weekDefs.find(w => w.key === currentWeekKey).label;
+  const withHooks  = pool.filter(p => p.reactions !== null && p.hook);
+
+  // ── Chart: avg engagement by hook type (filtered pool) ────────────────────
+  const hookGroups = {};
+  withHooks.forEach(p => {
+    if (!hookGroups[p.hook]) hookGroups[p.hook] = [];
+    hookGroups[p.hook].push(p);
+  });
+  const hookLabels = Object.keys(hookGroups).sort((a,b) => {
+    const avg = arr => arr.reduce((s,p)=>s+totalEng(p),0) / arr.length;
+    return avg(hookGroups[b]) - avg(hookGroups[a]);
+  });
+  const hookAvgs   = hookLabels.map(h => Math.round(hookGroups[h].reduce((s,p)=>s+totalEng(p),0) / hookGroups[h].length));
+  const hookColors = hookLabels.map(h => (hookConfig[h]||{color:'#aaa'}).color);
+
+  if (hookLabels.length > 0) {
+    charts.hookType = new Chart(document.getElementById('hookTypeChart'), {
+      type: 'bar',
+      data: {
+        labels: hookLabels.map(h => `${(hookConfig[h]||{icon:''}).icon} ${h}`),
+        datasets: [{ label:'Avg Total Engagement', data:hookAvgs, backgroundColor:hookColors, borderRadius:6 }]
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true } },
+        maintainAspectRatio: true
+      }
+    });
+  } else {
+    document.getElementById('hookTypeChart').getContext('2d'); // keep canvas clear
+  }
+
+  // ── Ranked hooks (for worked / avoid cards) ───────────────────────────────
+  const rankedHooks = hookLabels.map(h => {
+    const posts  = hookGroups[h];
+    const sorted = [...posts].sort((a,b) => totalEng(b) - totalEng(a));
+    return { hook: h, posts, avg: Math.round(posts.reduce((s,p)=>s+totalEng(p),0)/posts.length), best: sorted[0] };
+  }); // already sorted best→worst by hookLabels order
+
+  // ── Hooks That Worked ─────────────────────────────────────────────────────
+  document.getElementById('topPatterns').innerHTML = rankedHooks.length === 0
+    ? '<p style="font-size:13px;color:#aeaeb2;padding:12px 0">No hook data with reported metrics for this period.</p>'
+    : rankedHooks.slice(0, 4).map(({hook, posts, avg, best}) => {
+        const cfg  = hookConfig[hook] || { bg:'#f2f2f7', textColor:'#3a3a3c', icon:'•' };
+        const text = best.hookText ? best.hookText.replace(/^"|"$/g,'') : null;
+        return `
+          <div class="top-post-card">
+            <div class="top-post-meta">
+              <span class="hook-pill" style="background:${cfg.bg};color:${cfg.textColor}">${cfg.icon} ${hook}</span>
+              <span class="top-post-stat">${avg} avg eng · ${posts.length} post${posts.length>1?'s':''}</span>
+            </div>
+            ${text ? `<div class="top-post-hook-text">"${text.slice(0,130)}${text.length>130?'…':''}"</div>` : ''}
+            <div class="top-post-tags">
+              <span class="angle-pill">${best.creator}</span>
+              ${platTag(best.platform)}
+              <span class="angle-pill">${best.angle}</span>
+            </div>
+          </div>`;
+      }).join('');
+
+  // ── Hooks to Avoid ────────────────────────────────────────────────────────
+  let avoidHTML = '';
+
+  // Low-performing hook types (bottom half, avg below median)
+  if (rankedHooks.length > 1) {
+    const medianAvg = rankedHooks[Math.floor(rankedHooks.length / 2)].avg;
+    [...rankedHooks].reverse().slice(0, 2)
+      .filter(h => h.avg <= Math.max(medianAvg, 30))
+      .forEach(({hook, avg, best}) => {
+        const cfg  = hookConfig[hook] || { icon:'•' };
+        const text = best.hookText ? best.hookText.replace(/^"|"$/g,'') : best.topic;
+        avoidHTML += `
+          <div class="avoid-item">
+            <div class="avoid-label">✗ ${cfg.icon} ${hook} — avg ${avg} eng</div>
+            <div class="avoid-desc">Weakest hook in this period. Best example: ${best.creator} — "${text.slice(0,90)}${text.length>90?'…':''}"</div>
+          </div>`;
+      });
+  }
+
+  // Repeat creators in this period
+  const creatorMap = {};
+  pool.filter(p => p.reactions !== null).forEach(p => {
+    const base = p.creator.replace(/ \(2\)$| #2$| #\d$/, '').trim();
+    if (!creatorMap[base]) creatorMap[base] = 0;
+    creatorMap[base]++;
+  });
+  const repeats = Object.entries(creatorMap).filter(([,n]) => n > 1).map(([name]) => name);
+  if (repeats.length > 0) {
+    avoidHTML += `
+      <div class="avoid-item">
+        <div class="avoid-label">✗ Repeat posts — ${repeats.join(', ')}</div>
+        <div class="avoid-desc">Multiple posts from the same creator in the same week dilute both. Spread sponsored content across different voices.</div>
+      </div>`;
+  }
+
+  // Missing IG/YouTube metrics
+  const pendingAV = pool.filter(p => p.reactions === null && (p.platform === 'Instagram' || p.platform === 'YouTube'));
+  if (pendingAV.length > 0) {
+    avoidHTML += `
+      <div class="avoid-item">
+        <div class="avoid-label">✗ ${pendingAV.length} Instagram/YouTube post${pendingAV.length>1?'s':''} missing metrics</div>
+        <div class="avoid-desc">Request creator dashboard screenshots or use trackable links — without data these posts can't be evaluated.</div>
+      </div>`;
+  }
+
+  document.getElementById('avoidPatterns').innerHTML = avoidHTML ||
+    '<p style="font-size:13px;color:#aeaeb2;padding:12px 0">No patterns to flag for this period.</p>';
+
+  // ── Best Performing Posts ─────────────────────────────────────────────────
+  document.getElementById('topPostsTitle').textContent = `🥇 Best Performing Posts — ${weekLabel}`;
+  const top5 = pool.filter(p => p.reactions !== null).sort((a,b) => totalEng(b)-totalEng(a)).slice(0,5);
+  document.getElementById('topPostsList').innerHTML = top5.length === 0
+    ? '<p style="font-size:13px;color:#aeaeb2;padding:12px 0">No reported metrics for this period.</p>'
+    : top5.map((p, i) => {
+        const text = p.hookText ? p.hookText.replace(/^"|"$/g,'') : null;
+        return `
+          <div class="top-post-card">
+            <div class="top-post-meta">
+              <span class="rank ${i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank'}">#${i+1}</span>
+              <span class="top-post-creator">${p.creator}</span>
+              ${platTag(p.platform)}
+              <span style="color:#6e6e73;font-size:12px">${p.date}</span>
+              <span class="top-post-stat">${totalEng(p).toLocaleString()} eng</span>
+            </div>
+            ${text ? `<div class="top-post-hook-text">Hook: "${text}"</div>` : ''}
+            <div class="top-post-tags">
+              ${hookPill(p.hook)}
+              <span class="angle-pill">${p.angle}</span>
+              <span class="angle-pill" style="background:#f0f4ff;color:#3730a3">${p.topic}</span>
+            </div>
+          </div>`;
+      }).join('');
+}
+
+function renderAll() {
+  renderKPIs();
+  renderBudget();
+  renderTable();
+  renderInsights();
+  renderCharts();
+  renderHookAnalysis();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderWeekTabs();
+renderAll();
+</script>
+</body>
+</html>
