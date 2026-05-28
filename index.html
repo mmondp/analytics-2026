@@ -131,9 +131,57 @@
   .avoid-item:last-child { border-bottom: none; }
   .avoid-label { font-size: 13px; font-weight: 700; color: #991b1b; margin-bottom: 3px; }
   .avoid-desc { font-size: 12px; color: #6e6e73; line-height: 1.5; }
+
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: #1d1d1f; }
+  th.sort-asc::after  { content: ' ↑'; color: #1d1d1f; }
+  th.sort-desc::after { content: ' ↓'; color: #1d1d1f; }
+  td a.creator-link { color: inherit; text-decoration: none; font-weight: 700; border-bottom: 1px solid #d1d1d6; }
+  td a.creator-link:hover { border-bottom-color: #1d1d1f; }
+
+  /* ── Auth Gate ───────────────────────────────────────────── */
+  #authGate {
+    position: fixed; inset: 0; background: #f5f5f7;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999;
+  }
+  .auth-box {
+    background: #fff; border-radius: 20px; border: 1px solid #e5e5ea;
+    padding: 40px 48px; width: 100%; max-width: 380px; text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  }
+  .auth-box h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .auth-box p  { font-size: 13px; color: #6e6e73; margin-bottom: 28px; }
+  .auth-box input {
+    width: 100%; padding: 12px 16px; border: 1px solid #e5e5ea; border-radius: 10px;
+    font-size: 15px; outline: none; margin-bottom: 12px; transition: border-color 0.15s;
+  }
+  .auth-box input:focus { border-color: #1d1d1f; }
+  .auth-box button {
+    width: 100%; padding: 12px; background: #1d1d1f; color: #fff;
+    border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .auth-box button:hover { opacity: 0.85; }
+  .auth-error { font-size: 12px; color: #ef4444; margin-top: 10px; min-height: 18px; }
+  #app { display: none; }
 </style>
 </head>
 <body>
+
+<!-- ── Auth Gate ─────────────────────────────────────────────── -->
+<div id="authGate">
+  <div class="auth-box">
+    <h2>📊 Influencer Tracker</h2>
+    <p>Enter the password to access the dashboard</p>
+    <input type="password" id="pwInput" placeholder="Password" onkeydown="if(event.key==='Enter')checkPw()" autofocus />
+    <button onclick="checkPw()">Access Dashboard</button>
+    <div class="auth-error" id="authError"></div>
+  </div>
+</div>
+
+<!-- ── Dashboard ─────────────────────────────────────────────── -->
+<div id="app">
 
 <header>
   <h1>📊 Influencer Tracker</h1>
@@ -177,21 +225,7 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Creator</th>
-            <th>Platform</th>
-            <th>Date</th>
-            <th class="right">Reactions</th>
-            <th class="right">Comments</th>
-            <th class="right">Shares</th>
-            <th class="right">Views</th>
-            <th class="right">Total Eng.</th>
-            <th class="right">CPM</th>
-            <th>Performance</th>
-          </tr>
-        </thead>
+        <thead id="tableHead"></thead>
         <tbody id="tableBody"></tbody>
       </table>
     </div>
@@ -199,13 +233,6 @@
 
   <!-- ── Hook & Content Performance Analysis ───────────── -->
   <div class="section-divider"><h2>🎣 Hook &amp; Content Performance Analysis</h2></div>
-
-  <!-- Hook charts row -->
-  <div class="card" style="margin-bottom:20px">
-    <h2>Avg Engagement by Hook Type</h2>
-    <p class="subtitle">Posts with reported metrics · all platforms</p>
-    <canvas id="hookTypeChart" style="max-height:200px"></canvas>
-  </div>
 
   <!-- What worked / what to avoid -->
   <div class="grid-2" style="margin-bottom:20px">
@@ -224,7 +251,7 @@
   <!-- Top performing posts detail -->
   <div class="card" style="margin-bottom:20px">
     <h2 id="topPostsTitle">🥇 Best Performing Posts — All May</h2>
-    <p class="subtitle">Top 5 by total engagement · hook text · topic · angle · platform</p>
+    <p class="subtitle">Top 5 by composite score (engagement + views × 0.05) · hook · topic · angle</p>
     <div id="topPostsList"></div>
   </div>
 
@@ -241,6 +268,7 @@
   </div>
 
 </div>
+</div> <!-- /#app -->
 
 <script>
 // ─── HOOK CONFIG ──────────────────────────────────────────────────────────────
@@ -261,82 +289,85 @@ const hookConfig = {
 // topic: subject matter
 const allPosts = [
   // ── Week 1: May 1–7 ──────────────────────────────────────────────────────
-  { week:1, date:"May 1",  creator:"Micaela Dixon",         platform:"LinkedIn",  reactions:28,  comments:10,  shares:0,   views:null,  rate:275,
+  { week:1, date:"May 4",  creator:"Micaela Dixon",         platform:"LinkedIn",  reactions:27,  comments:10,  shares:0,   views:1612,  rate:275,  url:"https://www.linkedin.com/feed/update/urn:li:activity:7455905520332271616/",
     hook:"Story",        hookText:'"ok so I made a video game on a Tuesday after work — while I was commuting. because why not."', angle:"Casual Story / Creative Demo", topic:"UX Pilot — gamified learning" },
 
-  { week:1, date:"May 5",  creator:"Abraham John",           platform:"LinkedIn",  reactions:719, comments:126, shares:59,  views:null,  rate:400,
+  { week:1, date:"May 5",  creator:"Abraham John",           platform:"LinkedIn",  reactions:719, comments:126, shares:59,  views:null,  rate:400,  url:"https://www.linkedin.com/posts/abrahamjohn90_uiux-design-designgod-activity-7455648737588109312-6kl0/",
     hook:"Bold Claim",   hookText:'"🚨Big News for Designers: What if your AI design tool could actually design with your real components"', angle:"Announcement + Bold Question", topic:"AI design system integration" },
 
-  { week:1, date:"May 5",  creator:"@reverelia",             platform:"Instagram", reactions:12000,comments:54,shares:null,views:12000, rate:1500,
+  { week:1, date:"May 5",  creator:"@reverelia",             platform:"Instagram", reactions:12000,comments:54,shares:6326,views:256596, rate:1500, url:"https://www.instagram.com/reel/DX9bb4HvOyf/",
     hook:null,           hookText:null,                                     angle:"Unknown",                  topic:"Unknown" },
 
-  { week:1, date:"May 6",  creator:"Nika Kralj",             platform:"LinkedIn",  reactions:24,  comments:4,   shares:1,   views:null,  rate:100,
+  { week:1, date:"May 6",  creator:"Nika Kralj",             platform:"LinkedIn",  reactions:24,  comments:4,   shares:1,   views:null,  rate:100,  url:"https://www.linkedin.com/posts/nikakralj_my-friends-over-at-ux-pilot-ai-just-dropped-ugcPost-7457803615680860160-h48n/",
     hook:"Announcement", hookText:'"My friends over at UX Pilot AI just dropped a new AI agent 👀 I\'ve been playing around with it and… something that felt impossible is now very real."', angle:"Feature Announcement + Personal Reaction", topic:"Nodey — scrape & reuse design system components" },
 
-  { week:1, date:"May 7",  creator:"Aneta Kmiecik",          platform:"Instagram", reactions:179, comments:62,  shares:4,   views:5849,  rate:1625,
+  { week:1, date:"May 7",  creator:"Aneta Kmiecik",          platform:"Instagram", reactions:179, comments:62,  shares:4,   views:5849,  rate:1625, url:"https://www.instagram.com/reel/DYCWZUFIDVt/",
     hook:"Demo/Review",  hookText:"#AD visual product demo (Instagram carousel/video)",  angle:"Partner Demo — Instagram native", topic:"AI design tools — Figma workflow" },
 
-  { week:1, date:"May 7",  creator:"Aneta Kmiecik",          platform:"LinkedIn",  reactions:74,  comments:25,  shares:5,   views:14873, rate:1625,
+  { week:1, date:"May 7",  creator:"Aneta Kmiecik",          platform:"LinkedIn",  reactions:74,  comments:25,  shares:5,   views:14875, rate:1625, url:"https://www.linkedin.com/posts/anetakmiecik_ad-uxpilotaipartner-aidesign-activity-7458122099912585216--AmB/",
     hook:"Question",     hookText:'"What\'s an AI design process when you still design in Figma? I\'m still figuring it out honestly."', angle:"Relatable Uncertainty + Partner Mention", topic:"AI design workflow with Figma" },
 
-  { week:1, date:"May 7",  creator:"Andy Tries Coding (2)",  platform:"YouTube",   reactions:794, comments:62, shares:null, views:24000, rate:1500,
+  { week:1, date:"May 7",  creator:"Andy Tries Coding (2)",  platform:"YouTube",   reactions:794, comments:62, shares:null, views:24000, rate:1500, url:"https://youtu.be/nLD3OcoEGHs",
     hook:"Demo/Review",  hookText:"Hands-on YouTube coding demo of UX Pilot",  angle:"Video Demo",           topic:"UX Pilot coding demo" },
 
   // ── Week 2: May 8–14 ─────────────────────────────────────────────────────
-  { week:2, date:"May 8",  creator:"Prithiv Kumar",          platform:"LinkedIn",  reactions:4,   comments:0,   shares:0,   views:null,  rate:500,
+  { week:2, date:"May 8",  creator:"Prithiv Kumar",          platform:"LinkedIn",  reactions:4,   comments:0,   shares:0,   views:null,  rate:250,  url:"https://www.linkedin.com/posts/prithivkumar_uxdesign-figma-designsystems-ugcPost-7458155898579017731-xpWY/",
     hook:"Story",        hookText:'"I tested UX Pilot AI inside a real Figma design system. It didn\'t just generate UI, it respected components, structure, and constraints. That\'s a big shift."', angle:"Personal Experiment / Soft Review", topic:"UX Pilot AI inside Figma design system" },
 
-  { week:2, date:"May 8",  creator:"@CharlesPostiaux",       platform:"YouTube",   reactions:237, comments:28,  shares:null,views:4800,  rate:586.47,
+  { week:2, date:"May 8",  creator:"@CharlesPostiaux",       platform:"YouTube",   reactions:237, comments:28,  shares:null,views:4800,  rate:586.47, url:"https://youtu.be/pUfEBqDAN1I",
     hook:"Demo/Review",  hookText:"Hands-on YouTube video review of UX Pilot AI tool", angle:"Video Demo / Honest Review", topic:"UX Pilot tool demo — YouTube" },
 
-  { week:2, date:"May 12", creator:"Oliver Graff",           platform:"LinkedIn",  reactions:17,  comments:2,   shares:1,   views:null,  rate:630,
+  { week:2, date:"May 12", creator:"Oliver Graff",           platform:"LinkedIn",  reactions:17,  comments:2,   shares:1,   views:null,  rate:315,  url:"https://www.linkedin.com/posts/oliver-graff_in-the-past-week-ive-been-playing-around-activity-7459856150780600320-P_1C/",
     hook:"Story",        hookText:'"In the past week, I\'ve been playing around and testing with UX Pilot AI\'s Nodey, a new AI design agent inside Figma, using a real design system."', angle:"Personal Discovery / Exploration", topic:"Nodey AI agent inside Figma" },
 
+  { week:2, date:"May 16", creator:"Micaela Dixon (2)",       platform:"LinkedIn",  reactions:37,  comments:4,   shares:1,   views:1951,  rate:275,  url:"https://www.linkedin.com/feed/update/urn:li:activity:7458609247912628225/",
+    hook:"Story",        hookText:'"ok so I made a video game on a Tuesday after work — while I was commuting. because why not."', angle:"Casual Story / Creative Demo", topic:"UX Pilot — gamified learning" },
+
   // ── Week 3: May 15–21 ────────────────────────────────────────────────────
-  { week:3, date:"May 19", creator:"Oliver Graff (2)",       platform:"LinkedIn",  reactions:13,  comments:1,   shares:0,   views:null,  rate:null,
+  { week:3, date:"May 19", creator:"Oliver Graff (2)",       platform:"LinkedIn",  reactions:13,  comments:1,   shares:0,   views:null,  rate:315,  url:"https://www.linkedin.com/posts/oliver-graff_i-spent-some-more-time-with-nodey-a-new-activity-7462392919069548545-cJNr/",
     hook:"Story",        hookText:'"I spent some more time with Nodey, a new AI design agent inside Figma, from UX Pilot AI."', angle:"Follow-up Discovery / Deep Dive", topic:"Nodey deep dive — design system grounding" },
 
-  { week:3, date:"May 19", creator:"Prithiv Kumar (2)",      platform:"LinkedIn",  reactions:0,   comments:0,   shares:0,   views:null,  rate:null,
+  { week:3, date:"May 19", creator:"Prithiv Kumar (2)",      platform:"LinkedIn",  reactions:0,   comments:0,   shares:0,   views:null,  rate:null, url:"https://www.linkedin.com/posts/prithivkumar_uxdesign-figma-designsystems-share-7459613776909357056-RAIJ/",
     hook:"Bold Claim",   hookText:'"Most AI design tools generate UI. What made UX Pilot AI interesting was something else: It worked inside a real design system."', angle:"Contrarian Take / Differentiation", topic:"UX Pilot vs. generic AI design tools" },
 
-  { week:3, date:"May 21", creator:"@creative_vaani",        platform:"Instagram", reactions:313, comments:178, shares:null, views:13600, rate:1200,
+  { week:3, date:"May 21", creator:"@creative_vaani",        platform:"Instagram", reactions:313, comments:178, shares:null, views:13600, rate:1200, url:"https://www.instagram.com/reel/DYkD-wHB7x6/",
     hook:null,           hookText:null,                                     angle:"Unknown",                  topic:"Unknown" },
 
-  { week:3, date:"May 21", creator:"John Balboa",            platform:"LinkedIn",  reactions:40,  comments:18,  shares:0,   views:null,  rate:750,
+  { week:3, date:"May 21", creator:"John Balboa",            platform:"LinkedIn",  reactions:40,  comments:18,  shares:0,   views:null,  rate:750,  url:"https://www.linkedin.com/posts/johnkbalboa_uxpilot-figma-claudedesign-activity-7463238246802694145-nVF_/",
     hook:"Bold Claim",   hookText:'"𝗨𝗫 𝗣𝗶𝗹𝗼𝘁 𝗸𝗶𝗹𝗹𝗲𝗱 𝘁𝘄𝗼 𝘁𝗼𝗼𝗹𝘀 𝘄𝗶𝘁𝗵𝗼𝘂𝘁 𝗮𝘀𝗸𝗶𝗻𝗴. Figma. Claude Design."', angle:"Provocative Claim / Competitive Framing", topic:"UX Pilot vs. Figma + Claude Design" },
 
-  { week:3, date:"May 21", creator:"Andy Tries Coding",      platform:"YouTube",   reactions:40,  comments:9,   shares:null, views:1200,  rate:2200,
+  { week:3, date:"May 21", creator:"Andy Tries Coding",      platform:"YouTube",   reactions:40,  comments:9,   shares:null, views:1200,  rate:2200, url:"https://youtu.be/zay8Onmo8kM",
     hook:"Demo/Review",  hookText:"Hands-on YouTube coding tutorial for UX Pilot", angle:"Video Demo",        topic:"UX Pilot coding tutorial" },
 
   // ── Week 4: May 22–28 ────────────────────────────────────────────────────
-  { week:4, date:"May 22", creator:"Denis Panjuta",          platform:"LinkedIn",  reactions:220, comments:62,  shares:8,   views:1731,  rate:500,
+  { week:4, date:"May 22", creator:"Denis Panjuta",          platform:"LinkedIn",  reactions:220, comments:62,  shares:8,   views:1731,  rate:500,  url:"https://www.linkedin.com/posts/denis-panjuta_uxpilot-nodey-aidesign-ugcPost-7463345523023073280-XH5_/",
     hook:"Bold Claim",   hookText:'"New shiny AI is out, Anthropic Claude Design is everywhere, and it just gave me even more reason to stick to UX Pilot AI."', angle:"Contrarian / Competitor Reaction", topic:"UX Pilot AI vs. Claude Design — why I'm staying" },
 
-  { week:4, date:"May 22", creator:"Hazal Ozturk",           platform:"LinkedIn",  reactions:9,   comments:3,   shares:0,   views:null,  rate:200,
+  { week:4, date:"May 22", creator:"Hazal Ozturk",           platform:"LinkedIn",  reactions:11,  comments:3,   shares:0,   views:1605,  rate:200,  url:"https://www.linkedin.com/feed/update/urn:li:activity:7463566086786146304/",
     hook:"Story",        hookText:'"UX Pilot AI reached out and challenged me to test their Figma AI agent against Claude. Here\'s the honest breakdown."', angle:"Challenge / Comparison Story", topic:"UX Pilot vs. Claude — same prompt, same design system" },
 
-  { week:4, date:"May 25", creator:"ux.whee",                platform:"Instagram", reactions:null,comments:null,shares:null,views:null,  rate:1700,
+  { week:4, date:"May 25", creator:"ux.whee",                platform:"Instagram", reactions:null,comments:null,shares:null,views:null,  rate:1700, url:"https://www.instagram.com/reel/DYzInlBogxY/",
     hook:null,           hookText:null,                                     angle:"Unknown",                  topic:"Waiting for metrics" },
 
-  { week:4, date:"May 25", creator:"ux.whee",                platform:"LinkedIn",  reactions:null,comments:null,shares:null,views:null,  rate:300,
+  { week:4, date:"May 25", creator:"ux.whee",                platform:"LinkedIn",  reactions:null,comments:null,shares:null,views:null,  rate:300,  url:null,
     hook:null,           hookText:null,                                     angle:"Cross-post from Instagram", topic:"Waiting for metrics" },
 
-  { week:4, date:"May 25", creator:"Jhanvi Bhatia",          platform:"LinkedIn",  reactions:14,  comments:0,   shares:0,   views:null,  rate:300,
+  { week:4, date:"May 25", creator:"Jhanvi Bhatia",          platform:"LinkedIn",  reactions:14,  comments:0,   shares:0,   views:null,  rate:300,  url:"https://www.linkedin.com/posts/jhanvi-bhatia-350656165_uxpilotpartner-ad-ugcPost-7464998098251956224-TqxE/",
     hook:"Testimonial",  hookText:'"[#AD] Nodey helps me take my \'random shower thought\' to an actual handoff without leaving Figma."', angle:"Branded Testimonial / Use-case Story", topic:"Nodey — idea to handoff workflow" },
 
-  { week:4, date:"May 25", creator:"Kingsley Orji",           platform:"LinkedIn",  reactions:236, comments:28,  shares:25,  views:null,  rate:750,
+  { week:4, date:"May 25", creator:"Kingsley Orji",          platform:"LinkedIn",  reactions:236, comments:28,  shares:25,  views:null,  rate:750,  url:"https://uxpilot.ai/pt?utm_source=linkedin&utm_medium=influencer&utm_campaign=general&utm_content=kingsley-may26",
     hook:"Bold Claim",   hookText:'"One thing I know will burn your AI credits faster than anything else is jumping straight into building with AI without first planning out the project."', angle:"Pain Point / Warning Hook", topic:"AI planning before building — productivity" },
 
-  { week:4, date:"May 25", creator:"Tanya Agarwal",          platform:"LinkedIn",  reactions:31,  comments:14,  shares:0,   views:null,  rate:300,
+  { week:4, date:"May 25", creator:"Tanya Agarwal",          platform:"LinkedIn",  reactions:31,  comments:14,  shares:0,   views:null,  rate:300,  url:"https://www.linkedin.com/posts/tanyaagarwal012_uxdesign-productdesign-aitools-activity-7464518148029923329-AcAG/",
     hook:"Story",        hookText:'"I typed the same 12 words into two AI tools. \'Generate a pricing card. Plan name, price, 4 features, CTA.\' One gave me a component. One gave me a product."', angle:"Personal Experiment / Side-by-side Comparison", topic:"UX Pilot vs. ChatGPT — same prompt, different output" },
 
-  { week:4, date:"May 25", creator:"Benjamin Onyebuchi",     platform:"LinkedIn",  reactions:52,  comments:8,   shares:3,   views:null,  rate:200,
+  { week:4, date:"May 25", creator:"Benjamin Onyebuchi",     platform:"LinkedIn",  reactions:52,  comments:8,   shares:3,   views:null,  rate:200,  url:"https://www.linkedin.com/posts/benjamin-onyebuchi_i-slept-on-ux-pilot-ai-for-nearly-a-year-activity-7464590165504843776-CZ9G/",
     hook:"Story",        hookText:'"I slept on UX Pilot AI for nearly a year. Big mistake."', angle:"Confession / Honest Review", topic:"UX Pilot AI — late adopter honest review" },
 
-  { week:4, date:"May 27", creator:"Amarachi",               platform:"LinkedIn",  reactions:null,comments:null,shares:null,views:null,  rate:200,
+  { week:4, date:"May 27", creator:"Amarachi",               platform:"LinkedIn",  reactions:null,comments:null,shares:null,views:null,  rate:200,  url:"https://www.linkedin.com/posts/amarachi-okeke-810abb26a_you-know-that-moment-when-youre-trying-to-activity-7465265615650340864-HfiU/",
     hook:null,           hookText:null,                                     angle:"Unknown",                  topic:"Waiting for metrics" },
 
-  { week:4, date:"May 28", creator:"Jaclin",                 platform:"LinkedIn",  reactions:null,comments:null,shares:null,views:null,  rate:200,
+  { week:4, date:"May 28", creator:"Jaclin",                 platform:"LinkedIn",  reactions:null,comments:null,shares:null,views:null,  rate:200,  url:"https://www.linkedin.com/posts/jacalinding_ux-designtools-aidesign-ugcPost-7465234678342389760-6C1q/",
     hook:null,           hookText:null,                                     angle:"Unknown",                  topic:"Waiting for metrics" },
 ];
 
@@ -426,11 +457,31 @@ const _unused = {
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let currentWeekKey   = 0;
 let currentPlatform  = 'all';
+let sortCol          = 'eng';
+let sortDir          = -1; // -1 = descending (default: highest engagement first)
 let charts = {};
 
+function sortVal(p, col) {
+  if (col === 'eng')  return p.reactions !== null ? totalEng(p) : -1;
+  if (col === 'cpm')  return (p.views && p.rate) ? p.rate / p.views * 1000 : -1;
+  if (col === 'perf') return p.reactions !== null ? totalEng(p) : -1;
+  return 0;
+}
+
+function setSort(col) {
+  if (sortCol === col) {
+    sortDir = sortDir === -1 ? 1 : -1; // toggle direction
+  } else {
+    sortCol = col;
+    sortDir = -1; // new column → always start descending
+  }
+  renderTable();
+}
+
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-function totalEng(p) { return (p.reactions||0) + (p.comments||0) + (p.shares||0); }
-function cpm(p)      { return (p.views && p.rate) ? '$'+(p.rate/p.views*1000).toFixed(2) : null; }
+function totalEng(p)       { return (p.reactions||0) + (p.comments||0) + (p.shares||0); }
+function compositeScore(p) { return totalEng(p) + (p.views||0) * 0.05; }
+function cpm(p)            { return (p.views && p.rate) ? '$'+(p.rate/p.views*1000).toFixed(2) : null; }
 function shortNum(n) { return (n===null||n===undefined) ? '—' : n>=1000 ? (n/1000).toFixed(1)+'k' : n; }
 function dash()      { return '<span style="color:#c7c7cc">—</span>'; }
 function platTag(pl) {
@@ -478,22 +529,30 @@ function filterPlatform(platform, btn) {
 
 function renderKPIs() {
   const data = getFiltered();
-  const withMetrics = data.filter(p => p.reactions !== null);
-  const totalR   = withMetrics.reduce((s,p) => s+(p.reactions||0), 0);
-  const totalC   = withMetrics.reduce((s,p) => s+(p.comments||0), 0);
-  const totalBud = data.reduce((s,p) => s+(p.rate||0), 0);
-  const weekLabel = weekDefs.find(w=>w.key===currentWeekKey).label;
+  const withMetrics    = data.filter(p => p.reactions !== null);
+  const uniqueCreators = new Set(data.map(p => p.creator.replace(/ \(\d+\)$/, '').trim())).size;
+  const totalV         = data.reduce((s,p) => s+(p.views||0), 0);
+  const weekLabel      = weekDefs.find(w=>w.key===currentWeekKey).label;
   document.getElementById('kpiRow').innerHTML = `
-    <div class="kpi"><div class="label">Creators</div><div class="value">${data.length}</div><div class="sub">${weekLabel}</div></div>
-    <div class="kpi"><div class="label">Total Reactions</div><div class="value">${shortNum(totalR)}</div><div class="sub">reported posts only</div></div>
-    <div class="kpi"><div class="label">Total Comments</div><div class="value">${shortNum(totalC)}</div><div class="sub">reported posts only</div></div>
+    <div class="kpi"><div class="label">Creators</div><div class="value">${uniqueCreators}</div><div class="sub">${weekLabel}</div></div>
+    <div class="kpi"><div class="label">Total Posts</div><div class="value">${data.length}</div><div class="sub">${withMetrics.length} with reported metrics</div></div>
+    <div class="kpi"><div class="label">Total Views</div><div class="value">${shortNum(totalV)}</div><div class="sub">reported posts only</div></div>
   `;
 }
 
 function renderBudget() {
-  const platforms = ['LinkedIn', 'Instagram', 'YouTube'];
+  const platforms  = ['LinkedIn', 'Instagram', 'YouTube'];
+  // Cumulative: include all weeks up to and including the selected week
+  const budgetPool = currentWeekKey === 0
+    ? allPosts
+    : allPosts.filter(p => p.week <= currentWeekKey);
+  const wDef       = weekDefs.find(w => w.key === currentWeekKey);
+  const periodLabel = currentWeekKey === 0
+    ? 'full month'
+    : `cumulative · through ${wDef.label.split(' · ')[0].toLowerCase()}`;
+
   document.getElementById('budgetRow').innerHTML = platforms.map(pl => {
-    const spent = allPosts.filter(p=>p.platform===pl).reduce((s,p)=>s+(p.rate||0),0);
+    const spent = budgetPool.filter(p=>p.platform===pl).reduce((s,p)=>s+(p.rate||0),0);
     const prev  = budgetPrevision[pl];
     const pct   = Math.min((spent/prev)*100, 100);
     const over  = spent > prev;
@@ -505,10 +564,10 @@ function renderBudget() {
           <span class="budget-nums"><strong>$${spent.toLocaleString()}</strong> / $${prev.toLocaleString()}</span>
         </div>
         <div class="progress-track">
-          <div class="progress-fill" style="width:${pct}%; background:${over?'#ef4444':color}"></div>
+          <div class="progress-fill" style="width:${pct}%; background:${spent>prev?'#ef4444':spent===prev?'#10b981':'#3b82f6'}"></div>
         </div>
         <div class="budget-meta">
-          <span>${Math.round(pct)}% of budget · full month</span>
+          <span>${Math.round(pct)}% of budget · ${periodLabel}</span>
           <span class="${over?'over':''}">
             ${over ? `$${(spent-prev).toLocaleString()} over` : `$${(prev-spent).toLocaleString()} remaining`}
           </span>
@@ -519,19 +578,45 @@ function renderBudget() {
 
 function renderTable() {
   const data = getFiltered();
-  const sorted = [...data].sort((a,b) => totalEng(b) - totalEng(a));
+  const sorted = [...data].sort((a,b) => (sortVal(b, sortCol) - sortVal(a, sortCol)) * sortDir);
   const weekLabel = weekDefs.find(w=>w.key===currentWeekKey).label;
   document.getElementById('tableTitle').textContent = `Posts — ${weekLabel}`;
+
+  // Dynamic thead with sort indicators on sortable columns
+  function sortTh(col, label) {
+    const isCurrent = sortCol === col;
+    const cls = 'right sortable' + (isCurrent ? (sortDir === -1 ? ' sort-desc' : ' sort-asc') : '');
+    return `<th class="${cls}" onclick="setSort('${col}')">${label}</th>`;
+  }
+  document.getElementById('tableHead').innerHTML = `
+    <tr>
+      <th>#</th>
+      <th>Creator</th>
+      <th>Platform</th>
+      <th>Date</th>
+      <th class="right">Reactions</th>
+      <th class="right">Comments</th>
+      <th class="right">Shares</th>
+      <th class="right">Views</th>
+      ${sortTh('eng',  'Total Eng.')}
+      ${sortTh('cpm',  'CPM')}
+      ${sortTh('perf', 'Performance')}
+      <th class="right">Rate</th>
+    </tr>`;
+
   let rank = 0;
   document.getElementById('tableBody').innerHTML = sorted.map(p => {
     const hasMetrics = p.reactions !== null;
     if (hasMetrics) rank++;
     const rankClass = rank <= 3 && hasMetrics ? `rank rank-${rank}` : 'rank';
     const c = cpm(p);
+    const creatorCell = p.url
+      ? `<a href="${p.url}" target="_blank" class="creator-link">${p.creator}</a>`
+      : `<strong>${p.creator}</strong>`;
     return `
     <tr>
       <td><span class="${rankClass}">${hasMetrics ? rank : '—'}</span></td>
-      <td><strong>${p.creator}</strong></td>
+      <td>${creatorCell}</td>
       <td>${platTag(p.platform)}</td>
       <td style="color:#6e6e73">${p.date}</td>
       <td class="right">${p.reactions!==null ? p.reactions.toLocaleString() : dash()}</td>
@@ -541,6 +626,7 @@ function renderTable() {
       <td class="right">${hasMetrics ? totalEng(p).toLocaleString() : dash()}</td>
       <td class="right">${c || dash()}</td>
       <td>${perfBadge(p)}</td>
+      <td class="right">${p.rate ? '$'+p.rate.toLocaleString() : dash()}</td>
     </tr>`;
   }).join('');
 }
@@ -592,13 +678,11 @@ function renderCharts() {
 
 // ─── HOOK ANALYSIS ────────────────────────────────────────────────────────────
 function renderHookAnalysis() {
-  ['hookType'].forEach(k => { if(charts[k]) { charts[k].destroy(); delete charts[k]; } });
-
   const pool       = currentWeekKey === 0 ? allPosts : allPosts.filter(p => p.week === currentWeekKey);
   const weekLabel  = weekDefs.find(w => w.key === currentWeekKey).label;
   const withHooks  = pool.filter(p => p.reactions !== null && p.hook);
 
-  // ── Chart: avg engagement by hook type (filtered pool) ────────────────────
+  // ── Group hooks by type ────────────────────────────────────────────────────
   const hookGroups = {};
   withHooks.forEach(p => {
     if (!hookGroups[p.hook]) hookGroups[p.hook] = [];
@@ -608,26 +692,6 @@ function renderHookAnalysis() {
     const avg = arr => arr.reduce((s,p)=>s+totalEng(p),0) / arr.length;
     return avg(hookGroups[b]) - avg(hookGroups[a]);
   });
-  const hookAvgs   = hookLabels.map(h => Math.round(hookGroups[h].reduce((s,p)=>s+totalEng(p),0) / hookGroups[h].length));
-  const hookColors = hookLabels.map(h => (hookConfig[h]||{color:'#aaa'}).color);
-
-  if (hookLabels.length > 0) {
-    charts.hookType = new Chart(document.getElementById('hookTypeChart'), {
-      type: 'bar',
-      data: {
-        labels: hookLabels.map(h => `${(hookConfig[h]||{icon:''}).icon} ${h}`),
-        datasets: [{ label:'Avg Total Engagement', data:hookAvgs, backgroundColor:hookColors, borderRadius:6 }]
-      },
-      options: {
-        indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true } },
-        maintainAspectRatio: true
-      }
-    });
-  } else {
-    document.getElementById('hookTypeChart').getContext('2d'); // keep canvas clear
-  }
 
   // ── Ranked hooks (for worked / avoid cards) ───────────────────────────────
   const rankedHooks = hookLabels.map(h => {
@@ -639,7 +703,7 @@ function renderHookAnalysis() {
   // ── Hooks That Worked ─────────────────────────────────────────────────────
   document.getElementById('topPatterns').innerHTML = rankedHooks.length === 0
     ? '<p style="font-size:13px;color:#aeaeb2;padding:12px 0">No hook data with reported metrics for this period.</p>'
-    : rankedHooks.slice(0, 4).map(({hook, posts, avg, best}) => {
+    : rankedHooks.slice(0, 2).map(({hook, posts, avg, best}) => {
         const cfg  = hookConfig[hook] || { bg:'#f2f2f7', textColor:'#3a3a3c', icon:'•' };
         const text = best.hookText ? best.hookText.replace(/^"|"$/g,'') : null;
         return `
@@ -660,11 +724,13 @@ function renderHookAnalysis() {
   // ── Hooks to Avoid ────────────────────────────────────────────────────────
   let avoidHTML = '';
 
-  // Low-performing hook types (bottom half, avg below median)
-  if (rankedHooks.length > 1) {
+  // Low-performing hook types — never flag a hook already in "Hooks That Worked"
+  const workedHookSet = new Set(rankedHooks.slice(0, 2).map(h => h.hook));
+  if (rankedHooks.length > 2) {
     const medianAvg = rankedHooks[Math.floor(rankedHooks.length / 2)].avg;
-    [...rankedHooks].reverse().slice(0, 2)
-      .filter(h => h.avg <= Math.max(medianAvg, 30))
+    [...rankedHooks].reverse()
+      .filter(h => !workedHookSet.has(h.hook) && h.avg <= Math.max(medianAvg, 30))
+      .slice(0, 2)
       .forEach(({hook, avg, best}) => {
         const cfg  = hookConfig[hook] || { icon:'•' };
         const text = best.hookText ? best.hookText.replace(/^"|"$/g,'') : best.topic;
@@ -674,22 +740,6 @@ function renderHookAnalysis() {
             <div class="avoid-desc">Weakest hook in this period. Best example: ${best.creator} — "${text.slice(0,90)}${text.length>90?'…':''}"</div>
           </div>`;
       });
-  }
-
-  // Repeat creators in this period
-  const creatorMap = {};
-  pool.filter(p => p.reactions !== null).forEach(p => {
-    const base = p.creator.replace(/ \(2\)$| #2$| #\d$/, '').trim();
-    if (!creatorMap[base]) creatorMap[base] = 0;
-    creatorMap[base]++;
-  });
-  const repeats = Object.entries(creatorMap).filter(([,n]) => n > 1).map(([name]) => name);
-  if (repeats.length > 0) {
-    avoidHTML += `
-      <div class="avoid-item">
-        <div class="avoid-label">✗ Repeat posts — ${repeats.join(', ')}</div>
-        <div class="avoid-desc">Multiple posts from the same creator in the same week dilute both. Spread sponsored content across different voices.</div>
-      </div>`;
   }
 
   // Missing IG/YouTube metrics
@@ -707,11 +757,15 @@ function renderHookAnalysis() {
 
   // ── Best Performing Posts ─────────────────────────────────────────────────
   document.getElementById('topPostsTitle').textContent = `🥇 Best Performing Posts — ${weekLabel}`;
-  const top5 = pool.filter(p => p.reactions !== null).sort((a,b) => totalEng(b)-totalEng(a)).slice(0,5);
+  const top5 = pool.filter(p => p.reactions !== null).sort((a,b) => compositeScore(b)-compositeScore(a)).slice(0,5);
   document.getElementById('topPostsList').innerHTML = top5.length === 0
     ? '<p style="font-size:13px;color:#aeaeb2;padding:12px 0">No reported metrics for this period.</p>'
     : top5.map((p, i) => {
-        const text = p.hookText ? p.hookText.replace(/^"|"$/g,'') : null;
+        const text  = p.hookText ? p.hookText.replace(/^"|"$/g,'') : null;
+        const score = Math.round(compositeScore(p));
+        const breakdown = p.views
+          ? `<span style="font-size:11px;color:#aeaeb2;font-weight:400"> (${totalEng(p)} eng + ${shortNum(p.views)} views×0.05)</span>`
+          : '';
         return `
           <div class="top-post-card">
             <div class="top-post-meta">
@@ -719,7 +773,7 @@ function renderHookAnalysis() {
               <span class="top-post-creator">${p.creator}</span>
               ${platTag(p.platform)}
               <span style="color:#6e6e73;font-size:12px">${p.date}</span>
-              <span class="top-post-stat">${totalEng(p).toLocaleString()} eng</span>
+              <span class="top-post-stat">${score.toLocaleString()}${breakdown}</span>
             </div>
             ${text ? `<div class="top-post-hook-text">Hook: "${text}"</div>` : ''}
             <div class="top-post-tags">
@@ -740,9 +794,33 @@ function renderAll() {
   renderHookAnalysis();
 }
 
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+const PW_HASH = '8fcf02a5813f1ff6f3883c944b82e37c8293450ced372afb83672567c4ddfe09';
+
+async function checkPw() {
+  const val = document.getElementById('pwInput').value;
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(val));
+  const hash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  if (hash === PW_HASH) {
+    sessionStorage.setItem('itAuth', '1');
+    document.getElementById('authGate').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    renderWeekTabs();
+    renderAll();
+  } else {
+    document.getElementById('authError').textContent = 'Incorrect password — try again';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-renderWeekTabs();
-renderAll();
+if (sessionStorage.getItem('itAuth') === '1') {
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  renderWeekTabs();
+  renderAll();
+}
 </script>
 </body>
 </html>
